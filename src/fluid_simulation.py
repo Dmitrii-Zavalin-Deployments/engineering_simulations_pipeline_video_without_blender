@@ -15,16 +15,23 @@ class FluidSimulation(Application):
             dim=2, rho0=1000, c0=10, h0=1.2,
             gamma=7.0, alpha=0.1, beta=0.1
         )
-    
+
     def create_particles(self):
         """Define water particle positions and velocities."""
-        x, y = get_particle_array(name='fluid', dx=0.1, dy=0.1)
-        self.particles = {'fluid': x, 'boundary': y}
+        fluid_particles = get_particle_array(name='fluid', dx=0.1, dy=0.1)
+        boundary_particles = get_particle_array(name='boundary', dx=0.1, dy=0.1)
+
+        # ✅ Ensure particles have initial velocity in the x-direction
+        fluid_particles.u[:] = 15.0  # Apply strong horizontal velocity
+
+        self.particles = {'fluid': fluid_particles, 'boundary': boundary_particles}
 
     def run(self):
         """Execute the solver and compute fluid motion."""
         self.scheme.configure_solver(dt=0.01, tf=3.0)
-        self.scheme.solve(self.particles)
+        solver = self.scheme.get_solver()
+        solver.set_output(output_at_times=[0.0, 1.0, 2.0, 3.0])
+        solver.solve(self.particles)
         return self.particles
 
 # ✅ Execute Fluid Simulation & Store Results
@@ -40,7 +47,7 @@ fluid_output = {
     }
 }
 
-for frame in range(len(fluid_data['fluid'].x)):
+for frame_idx in range(len(fluid_data['fluid'].x)):
     frame_data = {
         "particles_x": fluid_data['fluid'].x.tolist(),
         "particles_y": fluid_data['fluid'].y.tolist(),
