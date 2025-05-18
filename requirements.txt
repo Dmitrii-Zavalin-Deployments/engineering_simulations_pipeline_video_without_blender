@@ -1,13 +1,25 @@
+# Build dependencies (Ensure PySPH can install correctly)
+Cython
+compyle
+mako
+numpy
+pytools
+setuptools
+wheel
+
+# Core dependencies for simulation, rendering, and validation
 dropbox
 requests
 opencv-python
-numpy
 jsonschema
 scikit-image
 pysph
 matplotlib
 vtk
+
+# Testing and validation tools
 pytest
 pytest-jsonschema
+
 
 
