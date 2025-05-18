@@ -1,0 +1,134 @@
+name: Fluid Simulation Pipeline (Without Blender)  # Workflow name
+
+on:
+  push:  # ✅ Runs on every commit to any branch
+  workflow_dispatch:  # ✅ Allows manual triggering too
+
+jobs:
+  fluid-simulation:
+    runs-on: ubuntu-latest
+    steps:
+
+      # 1️⃣ Step: Checkout the Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ Step: Install System Dependencies
+      - name: Install System Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3 python3-pip libegl1 ffmpeg
+
+      # 3️⃣ Step: Install Python Dependencies (for fluid simulation and rendering)
+      - name: Install Python Dependencies
+        run: |
+          pip install dropbox requests opencv-python numpy jsonschema scikit-image pysph matplotlib vtk
+
+      # 4️⃣ Step: Ensure `testing-input-output/` Directory Exists
+      - name: Create testing-input-output Directory
+        run: |
+          mkdir -p data/testing-input-output
+
+      # 5️⃣ Step: Verify Fluid Simulation Script Exists
+      - name: Verify Fluid Simulation Script Exists
+        run: |
+          if [ -f src/fluid_simulation.py ]; then
+            echo "✅ fluid_simulation.py found. Proceeding..."
+          else
+            echo "❌ ERROR: fluid_simulation.py not found!"
+            exit 1
+          fi
+
+      # 6️⃣ Step: Debug - List files in `testing-input-output/`
+      - name: Debug - List files in `testing-input-output/`
+        run: |
+          ls -l data/testing-input-output/
+
+      # 7️⃣ Step: Run Fluid Simulation
+      - name: Run Fluid Simulation
+        run: |
+          python3 src/fluid_simulation.py
+
+      # 8️⃣ Step: Verify `fluid_dynamics_animation.json` Exists
+      - name: Verify Simulation Output File
+        run: |
+          if [ -f data/testing-input-output/fluid_dynamics_animation.json ]; then
+            echo "✅ Simulation completed—fluid_dynamics_animation.json generated."
+          else
+            echo "❌ ERROR: No `fluid_dynamics_animation.json` file detected!"
+            exit 1
+          fi
+
+      # 9️⃣ Step: Render Fluid Motion Frames
+      - name: Render Fluid Motion Frames
+        run: |
+          python3 src/render_frames.py
+
+      # 🔟 Step: Verify Generated Frames
+      - name: Verify Generated Frames
+        run: |
+          if ls data/testing-input-output/frame_*.png 1> /dev/null 2>&1; then
+            echo "✅ Animation frames generated successfully."
+          else
+            echo "❌ ERROR: No rendered frames found!"
+            exit 1
+          fi
+
+      # 1️⃣1️⃣ Step: Create Video from Rendered Frames
+      - name: Create Video
+        run: |
+          chmod +x src/create_video.sh
+          ./src/create_video.sh
+          mv ./RenderedOutput/video.mp4 ./data/testing-input-output/video.mp4
+
+      # 1️⃣2️⃣ Step: Verify Generated Video
+      - name: Verify Generated Video
+        run: |
+          if [ -f data/testing-input-output/video.mp4 ]; then
+            echo "✅ Final video generated successfully."
+          else
+            echo "❌ ERROR: No video.mp4 file detected!"
+            exit 1
+          fi
+
+      # 1️⃣3️⃣ Step: Run Unit & Integration Tests for Video Validation
+      - name: Run Unit Tests  
+        run: pytest tests/test_input_validation.py --verbose  
+
+      - name: Run Output Validation Tests  
+        run: pytest tests/test_output_validation.py --verbose
+
+      - name: Run Fluid Simulation Tests  
+        run: pytest tests/test_simulation_process.py --verbose
+
+      - name: Run Video Rendering Tests  
+        run: pytest tests/test_video_generation.py --verbose
+
+      - name: Run Performance Tests  
+        run: pytest tests/test_performance.py --verbose
+
+      - name: Run Optical Flow Analysis  
+        run: pytest tests/test_optical_flow.py --verbose
+
+      - name: Run Multi-Directional Motion Tests  
+        run: pytest tests/test_multi_directional_motion.py --verbose
+
+      - name: Run SSIM & PSNR Validation Tests  
+        run: pytest tests/test_ssim_validation.py --verbose
+
+      # 1️⃣4️⃣ Step: Commit and Push `testing-input-output/` Folder
+      - name: Commit and Push Simulation Output
+        env:
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          git config --global user.name "$GIT_USER_NAME"
+          git config --global user.email "$GIT_USER_EMAIL"
+          
+          git add data/testing-input-output/
+          git status
+          git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
+          git push origin HEAD
+
+
+
