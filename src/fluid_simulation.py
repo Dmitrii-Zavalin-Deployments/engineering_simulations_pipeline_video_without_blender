@@ -1,81 +1,57 @@
-import bpy
-import sys
 import os
 import json
+import numpy as np
+from pysph.base.utils import get_particle_array
+from pysph.solver.application import Application
+from pysph.sph.scheme import WCSPHScheme
 
-# ✅ Debugging: Confirm Blender Python Environment
-print("✅ Blender Python environment detected!")
-print(f"Python executable: {sys.executable}")
-print(f"Python path: {sys.path}")
+# ✅ Define Fluid Simulation Class Using PySPH
+class FluidSimulation(Application):
+    def initialize(self):
+        """Setup fluid domain, particles, and physics properties."""
+        self.create_particles()
+        self.scheme = WCSPHScheme(
+            ['fluid'], ['boundary'],
+            dim=2, rho0=1000, c0=10, h0=1.2,
+            gamma=7.0, alpha=0.1, beta=0.1
+        )
+    
+    def create_particles(self):
+        """Define water particle positions and velocities."""
+        x, y = get_particle_array(name='fluid', dx=0.1, dy=0.1)
+        self.particles = {'fluid': x, 'boundary': y}
 
-# **Step 1: Define the Directory Containing `.blend` Files**
-blend_dir = "./testing-input-output/"
+    def run(self):
+        """Execute the solver and compute fluid motion."""
+        self.scheme.configure_solver(dt=0.01, tf=3.0)
+        self.scheme.solve(self.particles)
+        return self.particles
 
-# ✅ Ensure `testing-input-output/` directory exists
-if not os.path.exists(blend_dir):
-    os.makedirs(blend_dir)
-    print(f"✅ Created missing directory: {blend_dir}")
+# ✅ Execute Fluid Simulation & Store Results
+simulation = FluidSimulation()
+fluid_data = simulation.run()
 
-# **Step 2: Find Any `.blend` File in the Directory**
-blend_files = [f for f in os.listdir(blend_dir) if f.endswith(".blend")]
+# ✅ Convert Particle Positions to JSON Format
+fluid_output = {
+    "frames": [],
+    "fluid_domain": {
+        "dimensions": [50, 10, 5],  # Fluid domain size
+        "gravity": [0, 0, 0]  # Gravity disabled
+    }
+}
 
-if not blend_files:
-    print("❌ Error: No `.blend` file found in directory!")
-    sys.exit(1)
+for frame in range(len(fluid_data['fluid'].x)):
+    frame_data = {
+        "particles_x": fluid_data['fluid'].x.tolist(),
+        "particles_y": fluid_data['fluid'].y.tolist(),
+        "velocity_vectors": fluid_data['fluid'].u.tolist()
+    }
+    fluid_output["frames"].append(frame_data)
 
-# Take the first `.blend` file found
-blend_file = os.path.abspath(os.path.join(blend_dir, blend_files[0]))
+# ✅ Save Fluid Simulation Results
+output_path = "data/testing-input-output/fluid_dynamics_animation.json"
 
-# Debugging: Print the detected file for verification
-print(f"🔹 Automatically detected .blend file: {blend_file}")
+with open(output_path, "w") as f:
+    json.dump(fluid_output, f, indent=4)
 
-# **Step 3: Open the `.blend` File**
-bpy.ops.wm.open_mainfile(filepath=blend_file)
-print(f"✅ Successfully loaded '{blend_file}' into Blender!")
-
-# ✅ Set Up Fluid Domain Before Applying Gravity
-bpy.ops.mesh.primitive_cube_add(size=2, location=(0, 0, 0))
-domain = bpy.context.object
-domain.name = "FluidDomain"
-domain.scale = (50, 10, 5)  # Expanded domain ensures horizontal movement
-bpy.ops.object.transform_apply(scale=True)
-
-# ✅ Ensure Gravity Is Fully Disabled
-bpy.context.scene.gravity = (0, 0, 0)  # Disables global gravity
-domain.modifiers.new(name="FluidSim", type='FLUID')
-domain.modifiers["FluidSim"].fluid_type = 'DOMAIN'
-domain.modifiers["FluidSim"].domain_settings.domain_type = 'LIQUID'
-domain.modifiers["FluidSim"].domain_settings.gravity = (0, 0, 0)  # Disables Mantaflow gravity
-
-# ✅ Move Water Source to the Left to Ensure Proper Inflow Direction
-bpy.ops.mesh.primitive_plane_add(size=12, location=(-12, 0, 0))  # Water inflow from far left
-water_source = bpy.context.object
-water_source.name = "WaterSource"
-
-# ✅ Apply Fluid Flow Modifier
-water_source.modifiers.new(name="FluidFlow", type='FLUID')
-water_source.modifiers["FluidFlow"].fluid_type = 'FLOW'
-water_source.modifiers["FluidFlow"].flow_settings.flow_type = 'LIQUID'
-water_source.modifiers["FluidFlow"].flow_settings.flow_behavior = 'INFLOW'
-
-# ✅ Enable Initial Velocity for Inflow
-water_source.modifiers["FluidFlow"].flow_settings.use_initial_velocity = True
-
-# ✅ Set Correct Velocity Attributes (Float Value)
-water_source.modifiers["FluidFlow"].flow_settings.velocity_factor = 15.0  # Strong horizontal flow
-
-print("✅ Gravity removed, water source created, velocity applied!")
-
-# **Step 8: Save `.blend` File**
-blend_output_path = os.path.join(blend_dir, "simulation_output.blend")
-
-# ✅ Debugging: Print where the `.blend` file is being saved
-print(f"🔹 Attempting to save .blend file to: {blend_output_path}")
-
-bpy.ops.wm.save_mainfile(filepath=blend_output_path)
-
-if os.path.exists(blend_output_path):
-    print(f"✅ Fluid simulation setup complete! Scene saved as '{blend_output_path}'.")
-else:
-    print("❌ ERROR: Failed to save the .blend file!")
-    sys.exit(1)
+print(f"✅ Fluid simulation setup complete! Data saved as '{output_path}'.")
