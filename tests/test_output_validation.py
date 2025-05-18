@@ -1,10 +1,10 @@
 import json
 import unittest
 
-class TestOutputValidation(unittest.TestCase):
+class TestVideoMetadata(unittest.TestCase):
     def setUp(self):
         """Load output JSON"""
-        with open("data/testing-input-output/simulation_video_metadata.json") as f:
+        with open("data/testing-input-output/video_metadata.json") as f:
             self.output_data = json.load(f)
 
     def test_video_properties(self):
@@ -15,6 +15,3 @@ class TestOutputValidation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
