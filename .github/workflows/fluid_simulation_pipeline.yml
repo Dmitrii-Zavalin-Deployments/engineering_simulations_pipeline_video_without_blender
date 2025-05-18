@@ -30,8 +30,12 @@ jobs:
       - name: Install Python Dependencies
         run: |
           source venv/bin/activate
-          pip install -U pip
-          pip install cython  # ✅ Fixes PySPH installation errors
+          pip install -U pip setuptools wheel
+          
+          # Install required build dependencies for PySPH
+          pip install Cython compyle mako numpy pytools
+          
+          # Install core simulation and rendering dependencies
           pip install -r requirements.txt
 
       # 5️⃣ Step: Ensure `testing-input-output/` Directory Exists
