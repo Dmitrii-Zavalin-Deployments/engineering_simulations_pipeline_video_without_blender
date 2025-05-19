@@ -32,7 +32,10 @@ class FluidSimulation(Application):
 
     def run(self):
         """Execute the solver and compute fluid motion."""
-        solver = self.scheme.get_solver()
+        # ✅ Configure solver before getting it to prevent `NoneType` error
+        self.scheme.configure_solver(dt=0.01, tf=3.0)
+        solver = self.scheme.get_solver()  # ✅ Now the solver is properly assigned
+
         solver.set_output(output_at_times=[0.0, 1.0, 2.0, 3.0])
         solver.solve(self.particles)
         return self.particles
