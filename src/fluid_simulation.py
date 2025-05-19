@@ -36,7 +36,11 @@ class FluidSimulation(Application):
         """Execute the solver and compute fluid motion."""
         self.scheme.configure_solver(dt=0.01, tf=3.0)
         solver = self.scheme.get_solver()
-        solver.dump_output([0.0, 1.0, 2.0, 3.0])
+
+        # ✅ Correct method for output handling by passing individual time values
+        for t in [0.0, 1.0, 2.0, 3.0]:
+            solver.dump_output(t)
+
         solver.solve(self.particles)
         return self.particles
 
@@ -70,5 +74,3 @@ with open(output_path, "w") as f:
     json.dump(fluid_output, f, indent=4)
 
 print(f"✅ Fluid simulation setup complete! Data saved as '{output_path}'.")
-
-
