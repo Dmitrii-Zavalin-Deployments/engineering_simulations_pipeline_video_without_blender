@@ -36,7 +36,7 @@ class FluidSimulation(Application):
         """Execute the solver and compute fluid motion."""
         self.scheme.configure_solver(dt=0.01, tf=3.0)
         solver = self.scheme.get_solver()
-        solver.dump_output(output_at_times=[0.0, 1.0, 2.0, 3.0])
+        solver.dump_output([0.0, 1.0, 2.0, 3.0])
         solver.solve(self.particles)
         return self.particles
 
