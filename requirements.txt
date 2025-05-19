@@ -15,5 +15,6 @@ matplotlib
 vtk
 pytest
 pytest-jsonschema
+pysph
 
 
