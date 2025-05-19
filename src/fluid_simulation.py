@@ -11,7 +11,7 @@ class FluidSimulation(Application):
         """Setup fluid domain, particles, and physics properties."""
         self.create_particles()
         self.scheme = WCSPHScheme(
-            fluids=['fluid'],  # ✅ Removed invalid 'boundaries' argument
+            fluids=['fluid'], solids=['boundary'],  # ✅ Added solids argument
             dim=2, rho0=1000, c0=10, h0=1.2,
             gamma=7.0, alpha=0.1, beta=0.1,
             hdx=1.3
