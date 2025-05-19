@@ -7,6 +7,11 @@ from pysph.sph.scheme import WCSPHScheme
 
 # ✅ Define Fluid Simulation Class Using PySPH
 class FluidSimulation(Application):
+    def __init__(self):
+        super().__init__()  # Call the __init__ of the parent class
+        self.scheme = None  # Initialize scheme to None
+        self.initialize()
+
     def initialize(self):
         """Setup fluid domain, particles, and physics properties."""
         self.create_particles()
@@ -63,3 +68,5 @@ with open(output_path, "w") as f:
     json.dump(fluid_output, f, indent=4)
 
 print(f"✅ Fluid simulation setup complete! Data saved as '{output_path}'.")
+
+
