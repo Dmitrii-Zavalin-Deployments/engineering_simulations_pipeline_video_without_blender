@@ -17,12 +17,6 @@ class FluidSimulation(Application):
             hdx=1.3
         )
 
-        if self.scheme is None:  # ✅ Prevent NoneType errors
-            raise RuntimeError("❌ Scheme initialization failed!")
-
-        # ✅ Explicitly configure solver only if scheme is properly assigned
-        self.scheme.configure_solver(dt=0.01, tf=3.0)
-
     def create_particles(self):
         """Define water particle positions and velocities."""
         fluid_particles = get_particle_array(name='fluid', dx=0.1, dy=0.1)
@@ -35,18 +29,14 @@ class FluidSimulation(Application):
 
     def run(self):
         """Execute the solver and compute fluid motion."""
-        if self.scheme is None:
-            raise RuntimeError("❌ Scheme is not initialized before running simulation!")
-
-        solver = self.scheme.get_solver()  # ✅ Now the solver is properly assigned
-
+        self.scheme.configure_solver(dt=0.01, tf=3.0)
+        solver = self.scheme.get_solver()
         solver.set_output(output_at_times=[0.0, 1.0, 2.0, 3.0])
         solver.solve(self.particles)
         return self.particles
 
 # ✅ Execute Fluid Simulation & Store Results
 simulation = FluidSimulation()
-simulation.initialize()  # ✅ Explicitly initialize before running
 fluid_data = simulation.run()
 
 # ✅ Convert Particle Positions to JSON Format
