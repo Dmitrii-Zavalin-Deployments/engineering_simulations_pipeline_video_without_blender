@@ -17,6 +17,9 @@ class FluidSimulation(Application):
             hdx=1.3
         )
 
+        # ✅ Explicitly configure solver immediately after scheme initialization
+        self.scheme.configure_solver(dt=0.01, tf=3.0)
+
     def create_particles(self):
         """Define water particle positions and velocities."""
         fluid_particles = get_particle_array(name='fluid', dx=0.1, dy=0.1)
@@ -29,7 +32,6 @@ class FluidSimulation(Application):
 
     def run(self):
         """Execute the solver and compute fluid motion."""
-        self.scheme.configure_solver(dt=0.01, tf=3.0)
         solver = self.scheme.get_solver()
         solver.set_output(output_at_times=[0.0, 1.0, 2.0, 3.0])
         solver.solve(self.particles)
