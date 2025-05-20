@@ -37,15 +37,11 @@ jobs:
         run: |
           source venv/bin/activate
           pip install -U pip setuptools wheel
-          
           # Install required build dependencies for PySPH
           pip install Cython==0.29.36 compyle mako numpy pytools
-
-          # Install PySPH from GitHub (avoiding PyPI conflicts)
-          pip install git+https://github.com/pypr/pysph.git
-
           # Install core simulation and rendering dependencies
           pip install -r requirements.txt
+          echo "✅ Python dependencies installed."
 
       # 6️⃣ Step: Ensure `testing-input-output/` Directory Exists
       - name: Create testing-input-output Directory
@@ -117,42 +113,42 @@ jobs:
           fi
 
       # 1️⃣5️⃣ Step: Run Unit & Integration Tests for Video Validation
-      - name: Run Unit Tests  
+      - name: Run Unit Tests
         run: |
           source venv/bin/activate
-          pytest tests/test_input_validation.py --verbose  
+          pytest tests/test_input_validation.py --verbose
 
-      - name: Run Output Validation Tests  
+      - name: Run Output Validation Tests
         run: |
           source venv/bin/activate
           pytest tests/test_output_validation.py --verbose
 
-      - name: Run Fluid Simulation Tests  
+      - name: Run Fluid Simulation Tests
         run: |
           source venv/bin/activate
           pytest tests/test_simulation_process.py --verbose
 
-      - name: Run Video Rendering Tests  
+      - name: Run Video Rendering Tests
         run: |
           source venv/bin/activate
           pytest tests/test_video_generation.py --verbose
 
-      - name: Run Performance Tests  
+      - name: Run Performance Tests
         run: |
           source venv/bin/activate
           pytest tests/test_performance.py --verbose
 
-      - name: Run Optical Flow Analysis  
+      - name: Run Optical Flow Analysis
         run: |
           source venv/bin/activate
           pytest tests/test_optical_flow.py --verbose
 
-      - name: Run Multi-Directional Motion Tests  
+      - name: Run Multi-Directional Motion Tests
         run: |
           source venv/bin/activate
           pytest tests/test_multi_directional_motion.py --verbose
 
-      - name: Run SSIM & PSNR Validation Tests  
+      - name: Run SSIM & PSNR Validation Tests
         run: |
           source venv/bin/activate
           pytest tests/test_ssim_validation.py --verbose
@@ -165,7 +161,7 @@ jobs:
         run: |
           git config --global user.name "$GIT_USER_NAME"
           git config --global user.email "$GIT_USER_EMAIL"
-          
+
           git add data/testing-input-output/
           git status
           git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
