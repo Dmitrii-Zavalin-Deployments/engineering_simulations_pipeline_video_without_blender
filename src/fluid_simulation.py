@@ -4,12 +4,15 @@ import numpy as np
 from pysph.base.utils import get_particle_array
 from pysph.solver.application import Application
 from pysph.sph.scheme import WCSPHScheme
+from pysph.output.dumpers import ParticleDataDumper
 
 # ✅ Define Fluid Simulation Class Using PySPH
 class FluidSimulation(Application):
     def __init__(self):
         super().__init__()  # Call the __init__ of the parent class
         self.scheme = None  # Initialize scheme to None
+        self.output_path = "data/testing-input-output"
+        os.makedirs(self.output_path, exist_ok=True)
         self.initialize()
 
     def initialize(self):
@@ -32,21 +35,20 @@ class FluidSimulation(Application):
 
         self.particles = {'fluid': fluid_particles, 'boundary': boundary_particles}
 
+    def create_dumpers(self):
+        """Override create_dumpers to use a ParticleDataDumper."""
+        return [ParticleDataDumper(data_vars=['x', 'y', 'u'], filename='fluid_output')]
+
     def run(self):
         """Execute the solver and compute fluid motion."""
-        self.scheme.configure_solver(dt=0.01, tf=3.0)
-        solver = self.scheme.get_solver()
-
-        # ✅ Correct method for output handling by passing individual time values
-        for t in [0.0, 1.0, 2.0, 3.0]:
-            solver.dump_output(t)
-
+        self.scheme.configure_solver(dt=0.01, tf=3.0, output_freq=100)
+        solver = self.scheme.get_solver(dump_manager=self.create_dumpers())
         solver.solve(self.particles)
-        return self.particles
+        return solver.dump_manager.get_dumps() # Return the list of dumped data
 
 # ✅ Execute Fluid Simulation & Store Results
 simulation = FluidSimulation()
-fluid_data = simulation.run()
+dumped_data = simulation.run()
 
 # ✅ Convert Particle Positions to JSON Format
 fluid_output = {
@@ -57,20 +59,22 @@ fluid_output = {
     }
 }
 
-num_frames = len(np.atleast_1d(fluid_data['fluid'].x))
-
-for frame_idx in range(num_frames):
-    frame_data = {
-        "particles_x": fluid_data['fluid'].x.tolist(),
-        "particles_y": fluid_data['fluid'].y.tolist(),
-        "velocity_vectors": fluid_data['fluid'].u.tolist()
-    }
-    fluid_output["frames"].append(frame_data)
+# Process the dumped data to create JSON frames
+for data in dumped_data:
+    if 'fluid' in data:
+        frame_data = {
+            "particles_x": data['fluid']['x'].tolist(),
+            "particles_y": data['fluid']['y'].tolist(),
+            "velocity_vectors": data['fluid']['u'].tolist()
+        }
+        fluid_output["frames"].append(frame_data)
 
 # ✅ Save Fluid Simulation Results
-output_path = "data/testing-input-output/fluid_dynamics_animation.json"
+output_path = os.path.join(simulation.output_path, "fluid_dynamics_animation.json")
 
 with open(output_path, "w") as f:
     json.dump(fluid_output, f, indent=4)
 
 print(f"✅ Fluid simulation setup complete! Data saved as '{output_path}'.")
+
+
