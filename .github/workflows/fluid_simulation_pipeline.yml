@@ -29,38 +29,37 @@ jobs:
       - name: Setup Python Virtual Environment
         run: |
           python3 -m venv venv
-          source venv/bin/activate
+          echo "source venv/bin/activate" >> ~/.bashrc
+          source ~/.bashrc
           echo "✅ Virtual environment setup complete."
 
-      # 5️⃣ Step: Upgrade NumPy & Cython
-      - name: Upgrade NumPy & Cython
-        run: |
-          source venv/bin/activate
-          pip install --upgrade numpy cython
-
-      # 6️⃣ Step: Set Compiler Flags to Fix `fabs(double)` Error
+      # 5️⃣ Step: Set Compiler Flags to Fix PySPH Issues
       - name: Set Compiler Flags
         run: |
-          export CXXFLAGS="-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"
+          echo 'export CXXFLAGS="-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"' >> ~/.bashrc
+          source ~/.bashrc
+
+      # 6️⃣ Step: Upgrade NumPy & Cython Before Installing PySPH
+      - name: Upgrade NumPy & Cython
+        run: |
+          source ~/.bashrc
+          pip install --upgrade numpy cython
 
       # 7️⃣ Step: Install Python Dependencies (Updated for PySPH)
       - name: Install Python Dependencies
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pip install -U pip setuptools wheel
-          # Install required build dependencies for PySPH
           pip install Cython==0.29.36 compyle mako numpy pytools
-          # Explicitly install PySPH
-          pip install pysph
-          # Install core simulation and rendering dependencies
+          pip install pysph  # Explicitly install PySPH after dependencies
           pip install -r requirements.txt
           echo "✅ Python dependencies installed."
 
       # 🔍 Debug - Verify Installed Python Packages
       - name: Debug - Verify Installed Python Packages
         run: |
-          source venv/bin/activate
-          pip list | grep pysph || echo "❌ ERROR: PySPH installation failed!"
+          source ~/.bashrc
+          python -c "import pysph; print('✅ PySPH is installed successfully!')" || echo "❌ ERROR: PySPH installation failed!"
 
       # 8️⃣ Step: Ensure `testing-input-output/` Directory Exists
       - name: Create testing-input-output Directory
@@ -80,7 +79,7 @@ jobs:
       # 🔟 Step: Run Fluid Simulation
       - name: Run Fluid Simulation
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           python --version  # ✅ Debugging step: Print Python version
           python3 src/fluid_simulation.py
 
@@ -97,7 +96,7 @@ jobs:
       # 1️⃣2️⃣ Step: Render Fluid Motion Frames
       - name: Render Fluid Motion Frames
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           python3 src/render_frames.py
 
       # 1️⃣3️⃣ Step: Verify Generated Frames
@@ -130,42 +129,42 @@ jobs:
       # 1️⃣6️⃣ Step: Run Unit & Integration Tests for Video Validation
       - name: Run Unit Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_input_validation.py --verbose
 
       - name: Run Output Validation Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_output_validation.py --verbose
 
       - name: Run Fluid Simulation Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_simulation_process.py --verbose
 
       - name: Run Video Rendering Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_video_generation.py --verbose
 
       - name: Run Performance Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_performance.py --verbose
 
       - name: Run Optical Flow Analysis
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_optical_flow.py --verbose
 
       - name: Run Multi-Directional Motion Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_multi_directional_motion.py --verbose
 
       - name: Run SSIM & PSNR Validation Tests
         run: |
-          source venv/bin/activate
+          source ~/.bashrc
           pytest tests/test_ssim_validation.py --verbose
 
       # 1️⃣7️⃣ Step: Commit and Push `testing-input-output/` Folder
@@ -181,3 +180,6 @@ jobs:
           git status
           git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
           git push origin HEAD
+
+
+
