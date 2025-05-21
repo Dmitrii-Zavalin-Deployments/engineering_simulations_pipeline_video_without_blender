@@ -13,17 +13,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Step: Set Python to Version 3.10 (Fixes PySPH Issues)
-      - name: Setup Python 3.10
+      # 2️⃣ Step: Set Python to Version 3.9 (Fixes PySPH Issues)
+      - name: Setup Python 3.9
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.9"
 
       # 3️⃣ Step: Install System Dependencies
       - name: Install System Dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3 python3-pip libegl1 ffmpeg
+          sudo apt install -y python3 python3-pip libegl1 ffmpeg libopenvdb-dev libtbb-dev
 
       # 4️⃣ Step: Setup Python Virtual Environment
       - name: Setup Python Virtual Environment
@@ -32,7 +32,18 @@ jobs:
           source venv/bin/activate
           echo "✅ Virtual environment setup complete."
 
-      # 5️⃣ Step: Install Python Dependencies (Updated for PySPH)
+      # 5️⃣ Step: Upgrade NumPy & Cython
+      - name: Upgrade NumPy & Cython
+        run: |
+          source venv/bin/activate
+          pip install --upgrade numpy cython
+
+      # 6️⃣ Step: Set Compiler Flags to Fix `fabs(double)` Error
+      - name: Set Compiler Flags
+        run: |
+          export CXXFLAGS="-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"
+
+      # 7️⃣ Step: Install Python Dependencies (Updated for PySPH)
       - name: Install Python Dependencies
         run: |
           source venv/bin/activate
@@ -51,12 +62,12 @@ jobs:
           source venv/bin/activate
           pip list | grep pysph || echo "❌ ERROR: PySPH installation failed!"
 
-      # 6️⃣ Step: Ensure `testing-input-output/` Directory Exists
+      # 8️⃣ Step: Ensure `testing-input-output/` Directory Exists
       - name: Create testing-input-output Directory
         run: |
           mkdir -p data/testing-input-output
 
-      # 7️⃣ Step: Verify Fluid Simulation Script Exists
+      # 9️⃣ Step: Verify Fluid Simulation Script Exists
       - name: Verify Fluid Simulation Script Exists
         run: |
           if [ -f src/fluid_simulation.py ]; then
@@ -66,19 +77,14 @@ jobs:
             exit 1
           fi
 
-      # 8️⃣ Step: Debug - List files in `testing-input-output/`
-      - name: Debug - List files in `testing-input-output/`
-        run: |
-          ls -l data/testing-input-output/
-
-      # 9️⃣ Step: Run Fluid Simulation (Updated with Python Version Check)
+      # 🔟 Step: Run Fluid Simulation
       - name: Run Fluid Simulation
         run: |
           source venv/bin/activate
           python --version  # ✅ Debugging step: Print Python version
           python3 src/fluid_simulation.py
 
-      # 🔟 Step: Verify `fluid_dynamics_animation.json` Exists
+      # 1️⃣1️⃣ Step: Verify Simulation Output File
       - name: Verify Simulation Output File
         run: |
           if [ -f data/testing-input-output/fluid_dynamics_animation.json ]; then
@@ -88,13 +94,13 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣1️⃣ Step: Render Fluid Motion Frames
+      # 1️⃣2️⃣ Step: Render Fluid Motion Frames
       - name: Render Fluid Motion Frames
         run: |
           source venv/bin/activate
           python3 src/render_frames.py
 
-      # 1️⃣2️⃣ Step: Verify Generated Frames
+      # 1️⃣3️⃣ Step: Verify Generated Frames
       - name: Verify Generated Frames
         run: |
           if ls data/testing-input-output/frame_*.png 1> /dev/null 2>&1; then
@@ -104,14 +110,14 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣3️⃣ Step: Create Video from Rendered Frames
+      # 1️⃣4️⃣ Step: Create Video from Rendered Frames
       - name: Create Video
         run: |
           chmod +x src/create_video.sh
           ./src/create_video.sh
           mv ./RenderedOutput/video.mp4 ./data/testing-input-output/video.mp4
 
-      # 1️⃣4️⃣ Step: Verify Generated Video
+      # 1️⃣5️⃣ Step: Verify Generated Video
       - name: Verify Generated Video
         run: |
           if [ -f data/testing-input-output/video.mp4 ]; then
@@ -121,7 +127,7 @@ jobs:
             exit 1
           fi
 
-      # 1️⃣5️⃣ Step: Run Unit & Integration Tests for Video Validation
+      # 1️⃣6️⃣ Step: Run Unit & Integration Tests for Video Validation
       - name: Run Unit Tests
         run: |
           source venv/bin/activate
@@ -162,7 +168,7 @@ jobs:
           source venv/bin/activate
           pytest tests/test_ssim_validation.py --verbose
 
-      # 1️⃣6️⃣ Step: Commit and Push `testing-input-output/` Folder
+      # 1️⃣7️⃣ Step: Commit and Push `testing-input-output/` Folder
       - name: Commit and Push Simulation Output
         env:
           GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
@@ -175,6 +181,3 @@ jobs:
           git status
           git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
           git push origin HEAD
-
-
-
