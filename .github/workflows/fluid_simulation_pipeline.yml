@@ -32,16 +32,24 @@ jobs:
           source venv/bin/activate
           echo "✅ Virtual environment setup complete."
 
-      # 5️⃣ Step: Install Python Dependencies
+      # 5️⃣ Step: Install Python Dependencies (Updated for PySPH)
       - name: Install Python Dependencies
         run: |
           source venv/bin/activate
           pip install -U pip setuptools wheel
           # Install required build dependencies for PySPH
           pip install Cython==0.29.36 compyle mako numpy pytools
+          # Explicitly install PySPH
+          pip install pysph
           # Install core simulation and rendering dependencies
           pip install -r requirements.txt
           echo "✅ Python dependencies installed."
+
+      # 🔍 Debug - Verify Installed Python Packages
+      - name: Debug - Verify Installed Python Packages
+        run: |
+          source venv/bin/activate
+          pip list | grep pysph || echo "❌ ERROR: PySPH installation failed!"
 
       # 6️⃣ Step: Ensure `testing-input-output/` Directory Exists
       - name: Create testing-input-output Directory
@@ -63,10 +71,11 @@ jobs:
         run: |
           ls -l data/testing-input-output/
 
-      # 9️⃣ Step: Run Fluid Simulation
+      # 9️⃣ Step: Run Fluid Simulation (Updated with Python Version Check)
       - name: Run Fluid Simulation
         run: |
           source venv/bin/activate
+          python --version  # ✅ Debugging step: Print Python version
           python3 src/fluid_simulation.py
 
       # 🔟 Step: Verify `fluid_dynamics_animation.json` Exists
@@ -166,3 +175,6 @@ jobs:
           git status
           git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
           git push origin HEAD
+
+
+
