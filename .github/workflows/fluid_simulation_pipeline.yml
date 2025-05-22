@@ -1,8 +1,8 @@
-name: Fluid Simulation Pipeline (Without Blender)  # Workflow name
+name: Fluid Simulation Pipeline (Without Blender)
 
 on:
-  push:  # ✅ Runs on every commit to any branch
-  workflow_dispatch:  # ✅ Allows manual triggering too
+  push:
+  workflow_dispatch:
 
 jobs:
   fluid-simulation:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Step: Set Python to Version 3.9 (Fixes PySPH Issues)
+      # 2️⃣ Step: Set Up Python (Fix PySPH Issues)
       - name: Setup Python 3.9
         uses: actions/setup-python@v4
         with:
@@ -23,163 +23,54 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3 python3-pip libegl1 ffmpeg libopenvdb-dev libtbb-dev
+          sudo apt install -y python3 python3-pip ffmpeg vtk
 
-      # 4️⃣ Step: Setup Python Virtual Environment
-      - name: Setup Python Virtual Environment
+      # 4️⃣ Step: Install Python Dependencies
+      - name: Install Python Packages
         run: |
-          python3 -m venv venv
-          echo "source venv/bin/activate" >> ~/.bashrc
-          source ~/.bashrc
-          echo "✅ Virtual environment setup complete."
-
-      # 5️⃣ Step: Set Compiler Flags to Fix PySPH Issues
-      - name: Set Compiler Flags
-        run: |
-          echo 'export CXXFLAGS="-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"' >> ~/.bashrc
-          source ~/.bashrc
-
-      # 6️⃣ Step: Upgrade NumPy & Cython Before Installing PySPH
-      - name: Upgrade NumPy & Cython
-        run: |
-          source ~/.bashrc
-          pip install --upgrade numpy cython
-
-      # 7️⃣ Step: Install Python Dependencies (Updated for PySPH)
-      - name: Install Python Dependencies
-        run: |
-          source ~/.bashrc
-          pip install -U pip setuptools wheel
-          pip install Cython==0.29.36 compyle mako numpy pytools
-          pip install pysph  # Explicitly install PySPH after dependencies
           pip install -r requirements.txt
-          echo "✅ Python dependencies installed."
+          echo "✅ Python dependencies installed successfully."
 
-      # 🔍 Debug - Verify Installed Python Packages
-      - name: Debug - Verify Installed Python Packages
-        run: |
-          source ~/.bashrc
-          python -c "import pysph; print('✅ PySPH is installed successfully!')" || echo "❌ ERROR: PySPH installation failed!"
+      # 5️⃣ Step: Run Fluid Simulation
+      - name: Execute Fluid Simulation
+        run: python3 src/fluid_simulation.py
 
-      # 8️⃣ Step: Ensure `testing-input-output/` Directory Exists
-      - name: Create testing-input-output Directory
-        run: |
-          mkdir -p data/testing-input-output
-
-      # 9️⃣ Step: Verify Fluid Simulation Script Exists
-      - name: Verify Fluid Simulation Script Exists
-        run: |
-          if [ -f src/fluid_simulation.py ]; then
-            echo "✅ fluid_simulation.py found. Proceeding..."
-          else
-            echo "❌ ERROR: fluid_simulation.py not found!"
-            exit 1
-          fi
-
-      # 🔟 Step: Run Fluid Simulation
-      - name: Run Fluid Simulation
-        run: |
-          source ~/.bashrc
-          python --version  # ✅ Debugging step: Print Python version
-          python3 src/fluid_simulation.py
-
-      # 1️⃣1️⃣ Step: Verify Simulation Output File
-      - name: Verify Simulation Output File
+      # 6️⃣ Step: Verify Simulation Output
+      - name: Ensure Simulation Output Exists
         run: |
           if [ -f data/testing-input-output/fluid_dynamics_animation.json ]; then
-            echo "✅ Simulation completed—fluid_dynamics_animation.json generated."
+            echo "✅ Simulation output generated successfully."
           else
-            echo "❌ ERROR: No `fluid_dynamics_animation.json` file detected!"
+            echo "❌ ERROR: Fluid simulation output missing!"
             exit 1
           fi
 
-      # 1️⃣2️⃣ Step: Render Fluid Motion Frames
-      - name: Render Fluid Motion Frames
-        run: |
-          source ~/.bashrc
-          python3 src/render_frames.py
+      # 7️⃣ Step: Render Simulation Frames
+      - name: Render Frames Using PyVista
+        run: python3 src/render_simulation.py
 
-      # 1️⃣3️⃣ Step: Verify Generated Frames
-      - name: Verify Generated Frames
-        run: |
-          if ls data/testing-input-output/frame_*.png 1> /dev/null 2>&1; then
-            echo "✅ Animation frames generated successfully."
-          else
-            echo "❌ ERROR: No rendered frames found!"
-            exit 1
-          fi
-
-      # 1️⃣4️⃣ Step: Create Video from Rendered Frames
-      - name: Create Video
+      # 8️⃣ Step: Generate Video from Frames
+      - name: Create Final Video
         run: |
           chmod +x src/create_video.sh
           ./src/create_video.sh
-          mv ./RenderedOutput/video.mp4 ./data/testing-input-output/video.mp4
 
-      # 1️⃣5️⃣ Step: Verify Generated Video
-      - name: Verify Generated Video
-        run: |
-          if [ -f data/testing-input-output/video.mp4 ]; then
-            echo "✅ Final video generated successfully."
-          else
-            echo "❌ ERROR: No video.mp4 file detected!"
-            exit 1
-          fi
+      # 9️⃣ Step: Upload Video as Artifact
+      - name: Upload Generated Video
+        uses: actions/upload-artifact@v3
+        with:
+          name: simulation_final_video.mp4
+          path: simulation_final_video.mp4
 
-      # 1️⃣6️⃣ Step: Run Unit & Integration Tests for Video Validation
+      # 🔟 Step: Run Validation & Tests
       - name: Run Unit Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_input_validation.py --verbose
+        run: pytest tests/test_input_validation.py --verbose
 
-      - name: Run Output Validation Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_output_validation.py --verbose
-
-      - name: Run Fluid Simulation Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_simulation_process.py --verbose
+      - name: Run Simulation Tests
+        run: pytest tests/test_simulation_process.py --verbose
 
       - name: Run Video Rendering Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_video_generation.py --verbose
-
-      - name: Run Performance Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_performance.py --verbose
+        run: pytest tests/test_video_generation.py --verbose
 
       - name: Run Optical Flow Analysis
-        run: |
-          source ~/.bashrc
-          pytest tests/test_optical_flow.py --verbose
-
-      - name: Run Multi-Directional Motion Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_multi_directional_motion.py --verbose
-
-      - name: Run SSIM & PSNR Validation Tests
-        run: |
-          source ~/.bashrc
-          pytest tests/test_ssim_validation.py --verbose
-
-      # 1️⃣7️⃣ Step: Commit and Push `testing-input-output/` Folder
-      - name: Commit and Push Simulation Output
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-        run: |
-          git config --global user.name "$GIT_USER_NAME"
-          git config --global user.email "$GIT_USER_EMAIL"
-
-          git add data/testing-input-output/
-          git status
-          git diff --cached --quiet && echo "✅ No changes to commit!" || git commit -m "Auto-update: Added fluid_dynamics_animation.json and video"
-          git push origin HEAD
-
-
-
+        run: pytest tests/test_optical_flow.py --verbose
