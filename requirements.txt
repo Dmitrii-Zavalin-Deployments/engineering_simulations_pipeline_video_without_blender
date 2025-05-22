@@ -1,20 +1,21 @@
-Cython==0.29.36
-compyle
-mako
+# Core dependencies
 numpy
-pytools
-setuptools
-wheel
-
-dropbox
-requests
-opencv-python
-jsonschema
-scikit-image
+scipy
 matplotlib
-vtk
-pytest
-pytest-jsonschema
 
+# Fluid simulation (SPH-based modeling)
+pysph
+
+# Rendering and visualization
+vtk
+pyvista
+
+# Image processing & video generation
+opencv-python
+ffmpeg-python
+
+# CI/CD and automation
+requests
+dropbox
 
 
