@@ -3,17 +3,17 @@ name: Generate Video from PNG Frames
 on:
   push:
     branches:
-      - "main" # Or your default branch where you expect to push the PNGs
+      - "main"
       - "master"
-  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   create_video:
-    runs-on: ubuntu-latest # Uses the latest Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3 # Clones this second repository
+        uses: actions/checkout@v3
 
       - name: Install FFmpeg
         run: |
@@ -21,75 +21,30 @@ jobs:
           sudo apt-get install -y ffmpeg
 
       - name: Set Video Generation Parameters
-        id: set_params # This step defines variables to be used later
+        id: set_params
         run: |
-          # Define the input directory where you will place the PNG frames
-          # This should match the folder name from your first repository
-          # e.g., data/testing-input-output/turbine_animation_frames/
           INPUT_FRAMES_DIR="data/testing-input-output/turbine_animation_frames"
-          
-          # Define the desired output video filename and its location
           OUTPUT_VIDEO_PATH="data/testing-input-output/turbine_flow_animation.mp4"
-          
-          # Define the desired Frames Per Second for the output video
-          DESIRED_FPS="10" 
+          DESIRED_FPS="10"
 
-          echo "::set-output name=input_dir::$INPUT_FRAMES_DIR"
-          echo "::set-output name=output_file::$OUTPUT_VIDEO_PATH"
-          echo "::set-output name=fps::$DESIRED_FPS"
-          echo "Parameters set: Input_Dir=${INPUT_FRAMES_DIR}, Output_File=${OUTPUT_VIDEO_PATH}, FPS=${DESIRED_FPS}"
-
-      - name: Verify PNG Frames Exist
-        run: |
-          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
-          echo "Checking for PNG frames in: $INPUT_DIR"
-          if [ ! -d "$INPUT_DIR" ]; then
-            echo "❌ Error: Input directory '$INPUT_DIR' does not exist."
-            echo "Please ensure you have placed your PNG frames in this location."
-            exit 1
-          fi
-          if [ -z "$(ls -A "$INPUT_DIR"/*.png 2>/dev/null)" ]; then
-            echo "❌ Error: No PNG files found in '$INPUT_DIR'."
-            echo "Please ensure your PNG frames are named 'frame_X.png' and are present."
-            exit 1
-          fi
-          ls -l "$INPUT_DIR" # List content for debugging
+          echo "INPUT_DIR=${INPUT_FRAMES_DIR}" >> "$GITHUB_ENV"
+          echo "OUTPUT_FILE=${OUTPUT_VIDEO_PATH}" >> "$GITHUB_ENV"
+          echo "FPS=${DESIRED_FPS}" >> "$GITHUB_ENV"
 
       - name: Convert PNG Frames to Video with FFmpeg
         run: |
-          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
-          OUTPUT_FILE="${{ steps.set_params.outputs.output_file }}"
-          FPS="${{ steps.set_params.outputs.fps }}"
-
-          echo "FFmpeg: Converting images from $INPUT_DIR to video $OUTPUT_FILE at $FPS FPS"
+          echo "FFmpeg: Creating video from all PNG files in $INPUT_DIR at $FPS FPS"
           
-          # Ensure the output directory for the final video exists
           mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-          # Use FFmpeg to create the video
-          # -framerate: Input frame rate
-          # -i: Input pattern (e.g., frame_%0d.png for single digit, frame_%04d.png for 4-digit padded)
-          # ParaView's %t typically outputs 4-digit padded numbers (e.g., frame_0000.png, frame_0001.png)
-          # So, `frame_%d.png` should work as FFmpeg is smart enough to handle padding.
-          ffmpeg -framerate "$FPS" -i "$INPUT_DIR/frame_%d.png" \
+          ffmpeg -framerate "$FPS" -pattern_type glob -i "$INPUT_DIR/*.png" \
                  -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p \
                  "$OUTPUT_FILE"
           
-          echo "FFmpeg: Video conversion complete."
-          ls -l "$OUTPUT_FILE" # List the generated video file to confirm size
+          echo "✅ FFmpeg conversion complete."
 
-      - name: Clean up PNG Frames (Optional, but Recommended)
-        # Removes the source PNG files after video conversion to keep repo clean
-        run: |
-          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
-          if [ -d "$INPUT_DIR" ]; then
-            echo "Cleaning up PNG frames directory: $INPUT_DIR"
-            rm -rf "$INPUT_DIR"
-          fi
-          
-      - name: Commit and Push Generated Video to Repository
+      - name: Commit and Push Generated Video
         env:
-          # Define these as repository secrets in your SECOND repository
           GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }} 
           GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
         run: |
@@ -98,17 +53,10 @@ jobs:
 
           cd "$GITHUB_WORKSPACE"
 
-          VIDEO_FILE="${{ steps.set_params.outputs.output_file }}" 
-
-          if [ -f "${VIDEO_FILE}" ]; then
-            git add "${VIDEO_FILE}"
-            git status
-            if [[ $(git diff --cached --quiet; echo $?) -ne 0 ]]; then
-              git commit -m "Auto-update: Generated CFD visualization video from PNGs"
-              git push origin HEAD
-            else
-              echo "✅ No changes to video file to commit!"
-            fi
+          if [ -f "$OUTPUT_FILE" ]; then
+            git add "$OUTPUT_FILE"
+            git commit -m "Auto-update: Generated CFD visualization video"
+            git push origin HEAD
           else
-            echo "❌ No video file detected at ${VIDEO_FILE}, skipping commit."
+            echo "❌ No video file detected, skipping commit."
           fi
