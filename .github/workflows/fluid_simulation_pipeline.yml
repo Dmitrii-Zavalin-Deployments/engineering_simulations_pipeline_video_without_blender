@@ -1,76 +1,114 @@
-name: Fluid Simulation Pipeline (Without Blender)
+name: Generate Video from PNG Frames
 
 on:
   push:
-  workflow_dispatch:
+    branches:
+      - "main" # Or your default branch where you expect to push the PNGs
+      - "master"
+  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
 
 jobs:
-  fluid-simulation:
-    runs-on: ubuntu-latest
+  create_video:
+    runs-on: ubuntu-latest # Uses the latest Ubuntu runner
+
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3 # Clones this second repository
 
-      # 1️⃣ Step: Checkout the Repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      # 2️⃣ Step: Set Up Python (Fix PySPH Issues)
-      - name: Setup Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      # 3️⃣ Step: Install System Dependencies
-      - name: Install System Dependencies
+      - name: Install FFmpeg
         run: |
-          sudo apt update
-          sudo apt install -y python3 python3-pip ffmpeg vtk
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      # 4️⃣ Step: Install Python Dependencies
-      - name: Install Python Packages
+      - name: Set Video Generation Parameters
+        id: set_params # This step defines variables to be used later
         run: |
-          pip install -r requirements.txt
-          echo "✅ Python dependencies installed successfully."
+          # Define the input directory where you will place the PNG frames
+          # This should match the folder name from your first repository
+          # e.g., data/testing-input-output/turbine_animation_frames/
+          INPUT_FRAMES_DIR="data/testing-input-output/turbine_animation_frames"
+          
+          # Define the desired output video filename and its location
+          OUTPUT_VIDEO_PATH="data/testing-input-output/turbine_flow_animation.mp4"
+          
+          # Define the desired Frames Per Second for the output video
+          DESIRED_FPS="10" 
 
-      # 5️⃣ Step: Run Fluid Simulation
-      - name: Execute Fluid Simulation
-        run: python3 src/fluid_simulation.py
+          echo "::set-output name=input_dir::$INPUT_FRAMES_DIR"
+          echo "::set-output name=output_file::$OUTPUT_VIDEO_PATH"
+          echo "::set-output name=fps::$DESIRED_FPS"
+          echo "Parameters set: Input_Dir=${INPUT_FRAMES_DIR}, Output_File=${OUTPUT_VIDEO_PATH}, FPS=${DESIRED_FPS}"
 
-      # 6️⃣ Step: Verify Simulation Output
-      - name: Ensure Simulation Output Exists
+      - name: Verify PNG Frames Exist
         run: |
-          if [ -f data/testing-input-output/fluid_dynamics_animation.json ]; then
-            echo "✅ Simulation output generated successfully."
-          else
-            echo "❌ ERROR: Fluid simulation output missing!"
+          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
+          echo "Checking for PNG frames in: $INPUT_DIR"
+          if [ ! -d "$INPUT_DIR" ]; then
+            echo "❌ Error: Input directory '$INPUT_DIR' does not exist."
+            echo "Please ensure you have placed your PNG frames in this location."
             exit 1
           fi
+          if [ -z "$(ls -A "$INPUT_DIR"/*.png 2>/dev/null)" ]; then
+            echo "❌ Error: No PNG files found in '$INPUT_DIR'."
+            echo "Please ensure your PNG frames are named 'frame_X.png' and are present."
+            exit 1
+          fi
+          ls -l "$INPUT_DIR" # List content for debugging
 
-      # 7️⃣ Step: Render Simulation Frames
-      - name: Render Frames Using PyVista
-        run: python3 src/render_simulation.py
-
-      # 8️⃣ Step: Generate Video from Frames
-      - name: Create Final Video
+      - name: Convert PNG Frames to Video with FFmpeg
         run: |
-          chmod +x src/create_video.sh
-          ./src/create_video.sh
+          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
+          OUTPUT_FILE="${{ steps.set_params.outputs.output_file }}"
+          FPS="${{ steps.set_params.outputs.fps }}"
 
-      # 9️⃣ Step: Upload Video as Artifact
-      - name: Upload Generated Video
-        uses: actions/upload-artifact@v3
-        with:
-          name: simulation_final_video.mp4
-          path: simulation_final_video.mp4
+          echo "FFmpeg: Converting images from $INPUT_DIR to video $OUTPUT_FILE at $FPS FPS"
+          
+          # Ensure the output directory for the final video exists
+          mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-      # 🔟 Step: Run Validation & Tests
-      - name: Run Unit Tests
-        run: pytest tests/test_input_validation.py --verbose
+          # Use FFmpeg to create the video
+          # -framerate: Input frame rate
+          # -i: Input pattern (e.g., frame_%0d.png for single digit, frame_%04d.png for 4-digit padded)
+          # ParaView's %t typically outputs 4-digit padded numbers (e.g., frame_0000.png, frame_0001.png)
+          # So, `frame_%d.png` should work as FFmpeg is smart enough to handle padding.
+          ffmpeg -framerate "$FPS" -i "$INPUT_DIR/frame_%d.png" \
+                 -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p \
+                 "$OUTPUT_FILE"
+          
+          echo "FFmpeg: Video conversion complete."
+          ls -l "$OUTPUT_FILE" # List the generated video file to confirm size
 
-      - name: Run Simulation Tests
-        run: pytest tests/test_simulation_process.py --verbose
+      - name: Clean up PNG Frames (Optional, but Recommended)
+        # Removes the source PNG files after video conversion to keep repo clean
+        run: |
+          INPUT_DIR="${{ steps.set_params.outputs.input_dir }}"
+          if [ -d "$INPUT_DIR" ]; then
+            echo "Cleaning up PNG frames directory: $INPUT_DIR"
+            rm -rf "$INPUT_DIR"
+          fi
+          
+      - name: Commit and Push Generated Video to Repository
+        env:
+          # Define these as repository secrets in your SECOND repository
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }} 
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: |
+          git config --global user.name "${GIT_USER_NAME}"
+          git config --global user.email "${GIT_USER_EMAIL}"
 
-      - name: Run Video Rendering Tests
-        run: pytest tests/test_video_generation.py --verbose
+          cd "$GITHUB_WORKSPACE"
 
-      - name: Run Optical Flow Analysis
-        run: pytest tests/test_optical_flow.py --verbose
+          VIDEO_FILE="${{ steps.set_params.outputs.output_file }}" 
+
+          if [ -f "${VIDEO_FILE}" ]; then
+            git add "${VIDEO_FILE}"
+            git status
+            if [[ $(git diff --cached --quiet; echo $?) -ne 0 ]]; then
+              git commit -m "Auto-update: Generated CFD visualization video from PNGs"
+              git push origin HEAD
+            else
+              echo "✅ No changes to video file to commit!"
+            fi
+          else
+            echo "❌ No video file detected at ${VIDEO_FILE}, skipping commit."
+          fi
