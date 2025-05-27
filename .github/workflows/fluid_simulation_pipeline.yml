@@ -37,7 +37,10 @@ jobs:
           
           mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-          ffmpeg -framerate "$FPS" -pattern_type glob -i "$INPUT_DIR/*.png" \
+          # Ensure old output file is removed to avoid overwrite prompt
+          rm -f "$OUTPUT_FILE"
+
+          ffmpeg -y -framerate "$FPS" -pattern_type glob -i "$INPUT_DIR/*.png" \
                  -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p \
                  "$OUTPUT_FILE"
           
