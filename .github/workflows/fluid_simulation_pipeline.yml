@@ -85,7 +85,14 @@ jobs:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-        run: src/upload_to_dropbox.sh
+        run: |
+          echo "📤 Uploading video file to Dropbox..."
+          python3 src/upload_to_dropbox.py \
+            "$OUTPUT_FILE" \
+            "/engineering_simulations_pipeline/turbine_flow_animation.mp4" \
+            "$REFRESH_TOKEN" \
+            "$APP_KEY" \
+            "$APP_SECRET"
 
 
 
