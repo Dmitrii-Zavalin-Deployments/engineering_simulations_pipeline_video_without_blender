@@ -20,6 +20,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install Dropbox Python SDK
+        run: pip install dropbox
+
       - name: Make `download_from_dropbox.sh` Executable
         run: chmod +x src/download_from_dropbox.sh
 
@@ -66,20 +74,5 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/upload_to_dropbox.sh
 
-      - name: Commit and Push Generated Video
-        env:
-          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }} 
-          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-        run: |
-          git config --global user.name "${GIT_USER_NAME}"
-          git config --global user.email "${GIT_USER_EMAIL}"
 
-          cd "$GITHUB_WORKSPACE"
 
-          if [ -f "$OUTPUT_FILE" ]; then
-            git add "$OUTPUT_FILE"
-            git commit -m "Auto-update: Generated CFD visualization video"
-            git push origin HEAD
-          else
-            echo "❌ No video file detected, skipping commit."
-          fi
