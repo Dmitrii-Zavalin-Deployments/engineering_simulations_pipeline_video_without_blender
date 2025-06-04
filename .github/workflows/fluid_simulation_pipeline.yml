@@ -20,6 +20,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
+      - name: Make `download_from_dropbox.sh` Executable
+        run: chmod +x src/download_from_dropbox.sh
+
+      - name: Download PNG Frames from Dropbox
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: src/download_from_dropbox.sh
+
       - name: Set Video Generation Parameters
         id: set_params
         run: |
@@ -45,6 +55,16 @@ jobs:
                  "$OUTPUT_FILE"
           
           echo "✅ FFmpeg conversion complete."
+
+      - name: Make `upload_to_dropbox.sh` Executable
+        run: chmod +x src/upload_to_dropbox.sh
+
+      - name: Upload Generated Video to Dropbox
+        env:
+          APP_KEY: ${{ secrets.APP_KEY }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: src/upload_to_dropbox.sh
 
       - name: Commit and Push Generated Video
         env:
