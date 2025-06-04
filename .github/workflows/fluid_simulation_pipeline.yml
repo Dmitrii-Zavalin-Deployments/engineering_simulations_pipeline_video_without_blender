@@ -64,6 +64,19 @@ jobs:
           
           echo "✅ FFmpeg conversion complete."
 
+      - name: Debug Generated Video File
+        run: |
+          echo "🔍 Checking if video file exists..."
+          if [ -f "$OUTPUT_FILE" ]; then
+            echo "✅ Video file exists: $OUTPUT_FILE"
+          else
+            echo "❌ ERROR: Expected output file '$OUTPUT_FILE' does not exist."
+            exit 1
+          fi
+          
+          echo "📂 Listing files in output directory..."
+          ls -R "$(dirname "$OUTPUT_FILE")"
+
       - name: Make `upload_to_dropbox.sh` Executable
         run: chmod +x src/upload_to_dropbox.sh
 
