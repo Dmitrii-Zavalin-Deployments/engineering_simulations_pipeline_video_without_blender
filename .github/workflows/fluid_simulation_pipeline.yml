@@ -40,13 +40,13 @@ jobs:
 
       - name: 📂 Unzip Rendered Output Archive
         run: |
-          ZIP_PATH="data/testing-output-bundle.zip"
+          ZIP_PATH="data/testing-input-output/testing-output-bundle.zip"
           if [ ! -f "$ZIP_PATH" ]; then
             echo "❌ Archive not found at $ZIP_PATH"
             exit 1
           fi
-          unzip -o "$ZIP_PATH" -d "data/"
-          echo "✅ Unzipped archive into data/"
+          unzip -o "$ZIP_PATH" -d "data/testing-input-output"
+          echo "✅ Unzipped archive into data/testing-input-output"
 
       - name: Set Video Generation Parameters
         id: set_params
