@@ -5,7 +5,7 @@ on:
     branches:
       - "main"
       - "master"
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
   create_video:
@@ -18,7 +18,7 @@ jobs:
       - name: Install FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg unzip
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -31,12 +31,22 @@ jobs:
       - name: Make `download_from_dropbox.sh` Executable
         run: chmod +x src/download_from_dropbox.sh
 
-      - name: Download PNG Frames from Dropbox
+      - name: Download Rendered Archive from Dropbox
         env:
           APP_KEY: ${{ secrets.APP_KEY }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
         run: src/download_from_dropbox.sh
+
+      - name: 📂 Unzip Rendered Output Archive
+        run: |
+          ZIP_PATH="data/testing-output-bundle.zip"
+          if [ ! -f "$ZIP_PATH" ]; then
+            echo "❌ Archive not found at $ZIP_PATH"
+            exit 1
+          fi
+          unzip -o "$ZIP_PATH" -d "data/"
+          echo "✅ Unzipped archive into data/"
 
       - name: Set Video Generation Parameters
         id: set_params
@@ -52,16 +62,13 @@ jobs:
       - name: Convert PNG Frames to Video with FFmpeg
         run: |
           echo "FFmpeg: Creating video from all PNG files in $INPUT_DIR at $FPS FPS"
-          
           mkdir -p "$(dirname "$OUTPUT_FILE")"
-
-          # Ensure old output file is removed to avoid overwrite prompt
           rm -f "$OUTPUT_FILE"
 
           ffmpeg -y -framerate "$FPS" -pattern_type glob -i "$INPUT_DIR/*.png" \
                  -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p \
                  "$OUTPUT_FILE"
-          
+
           echo "✅ FFmpeg conversion complete."
 
       - name: Debug Generated Video File
@@ -73,7 +80,7 @@ jobs:
             echo "❌ ERROR: Expected output file '$OUTPUT_FILE' does not exist."
             exit 1
           fi
-          
+
           echo "📂 Listing files in output directory..."
           ls -R "$(dirname "$OUTPUT_FILE")"
 
